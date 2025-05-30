@@ -117,6 +117,75 @@ export const callAPI = {
       toast.error(apiError.response?.data?.message || 'Failed to fetch call status');
       throw error;
     }
+  },
+
+  getDetail: async (callId: number): Promise<CallApiResponse> => {
+    try {
+      const response = await api.get(`${CALLS_ENDPOINT}${callId}/status/`);
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.message || 'Failed to fetch call details');
+      throw error;
+    }
+  },
+
+  transcribe: async (callId: number): Promise<CallApiResponse> => {
+    try {
+      const response = await api.post(`${CALLS_ENDPOINT}${callId}/transcribe/`);
+      const result = response.data;
+      
+      if (result.status === 'success') {
+        toast.success('Transcription started successfully');
+        mutate(`${CALLS_ENDPOINT}history/`);
+      }
+      
+      return result;
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.message || 'Failed to start transcription');
+      throw error;
+    }
+  },
+
+  summarize: async (callId: number): Promise<CallApiResponse> => {
+    try {
+      const response = await api.post(`${CALLS_ENDPOINT}${callId}/summarize/`);
+      const result = response.data;
+      
+      if (result.status === 'success') {
+        toast.success('Summary generated successfully');
+        mutate(`${CALLS_ENDPOINT}history/`);
+      }
+      
+      return result;
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.message || 'Failed to generate summary');
+      throw error;
+    }
+  },
+
+  getAudioUrl: (callId: number): string => {
+    // Use the same base URL as the main API configuration
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    return `${baseUrl}/calls/${callId}/audio/`;
+  },
+
+  getAudioBlob: async (callId: number): Promise<string> => {
+    try {
+      const response = await api.get(`/calls/${callId}/audio/`, {
+        responseType: 'blob'
+      });
+      
+      // Create object URL from blob
+      const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
+      return URL.createObjectURL(audioBlob);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.error('Error fetching audio blob:', apiError);
+      throw error;
+    }
   }
 };
 

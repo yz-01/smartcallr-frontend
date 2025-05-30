@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Phone, Clock, FileAudio } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Phone, Clock, FileAudio, Eye } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -17,8 +18,19 @@ import { useCallHistory } from '@/services/call';
 
 export default function CallHistory() {
     const { calls, isLoading, isError } = useCallHistory();
+    const router = useRouter();
 
     const getStatusBadgeVariant = (status: string) => {
+        switch (status) {
+            case 'completed': return 'default';
+            case 'failed': return 'destructive';
+            case 'processing': return 'secondary';
+            case 'pending': return 'outline';
+            default: return 'secondary';
+        }
+    };
+
+    const getCallStatusBadgeVariant = (status: string) => {
         switch (status) {
             case 'completed': return 'default';
             case 'failed': return 'destructive';
@@ -39,8 +51,14 @@ export default function CallHistory() {
             case 'failed': return 'Failed';
             case 'no_answer': return 'No Answer';
             case 'busy': return 'Busy';
+            case 'pending': return 'Pending';
+            case 'processing': return 'Processing';
             default: return status;
         }
+    };
+
+    const handleRowClick = (callId: number) => {
+        router.push(`/call-details/${callId}`);
     };
 
     if (isLoading) {
@@ -65,7 +83,7 @@ export default function CallHistory() {
                 <CardHeader>
                     <CardTitle>Call History</CardTitle>
                     <CardDescription>
-                        View all your past calls and their recordings
+                        View all your past calls, recordings, transcriptions and summaries. Click on any row to view details.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -75,16 +93,22 @@ export default function CallHistory() {
                                 <TableRow>
                                     <TableHead>Phone Number</TableHead>
                                     <TableHead>Lead</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead>Call Status</TableHead>
                                     <TableHead>Start Time</TableHead>
                                     <TableHead>Duration</TableHead>
                                     <TableHead>Recording</TableHead>
-                                    <TableHead>Notes</TableHead>
+                                    <TableHead>Transcription</TableHead>
+                                    <TableHead>Summary</TableHead>
+                                    <TableHead>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {calls.map((call) => (
-                                    <TableRow key={call.id}>
+                                    <TableRow
+                                        key={call.id}
+                                        className="cursor-pointer hover:bg-gray-50"
+                                        onClick={() => handleRowClick(call.id)}
+                                    >
                                         <TableCell className="font-medium">
                                             <div className="flex items-center space-x-2">
                                                 <Phone className="h-4 w-4 text-gray-400" />
@@ -95,7 +119,7 @@ export default function CallHistory() {
                                             {call.lead_name || '-'}
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={getStatusBadgeVariant(call.status)}>
+                                            <Badge variant={getCallStatusBadgeVariant(call.status)}>
                                                 {getStatusText(call.status)}
                                             </Badge>
                                         </TableCell>
@@ -126,8 +150,19 @@ export default function CallHistory() {
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <div className="max-w-xs truncate text-sm">
-                                                {call.notes || '-'}
+                                            <Badge variant={getStatusBadgeVariant(call.transcribe_status)}>
+                                                {getStatusText(call.transcribe_status)}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={getStatusBadgeVariant(call.summary_status)}>
+                                                {getStatusText(call.summary_status)}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center space-x-1 text-blue-600">
+                                                <Eye className="h-4 w-4" />
+                                                <span className="text-sm">View</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
