@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/services/auth';
-import Image from "next/image";
 
 export default function Home() {
   const router = useRouter();

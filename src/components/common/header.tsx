@@ -36,6 +36,7 @@ export default function Header({ user }: HeaderProps) {
             await authAPI.logout();
             router.push('/login');
         } catch (error) {
+            console.error('Error logging out:', error);
             toast.error('Error logging out');
         } finally {
             setIsLoading(false);

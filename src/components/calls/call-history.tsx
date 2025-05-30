@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Phone, Eye } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
