@@ -11,7 +11,9 @@ import { Lead, CreateLeadRequest, UpdateLeadRequest } from '@/interfaces/lead';
 
 const leadSchema = z.object({
     name: z.string().min(1, 'Name is required'),
-    phone: z.string().min(1, 'Phone number is required'),
+    phone: z.string()
+        .min(1, 'Phone number is required')
+        .regex(/^\+\d{8,15}$/, 'Phone number must start with + followed by country code and number (e.g., +60182704553)'),
     email: z.string().email('Invalid email address'),
 });
 
@@ -80,7 +82,7 @@ export default function LeadForm({ lead, onSuccess }: LeadFormProps) {
                 <Input
                     id="phone"
                     type="tel"
-                    placeholder="Enter phone number"
+                    placeholder="Enter phone with country code (e.g., +60182704553)"
                     {...register('phone')}
                     className={errors.phone ? 'border-red-500' : ''}
                 />

@@ -33,14 +33,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useLeads, leadAPI } from '@/services/lead';
 import { Lead } from '@/interfaces/lead';
+import { Call } from '@/interfaces/call';
 import LeadForm from '@/components/leads/lead-form';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import { callAPI } from '@/services/call';
 
 export default function LeadList() {
     const { leads, isLoading, isError, mutate } = useLeads();
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editingLead, setEditingLead] = useState<Lead | null>(null);
+    const router = useRouter();
 
     const handleEdit = (lead: Lead) => {
         setEditingLead(lead);
@@ -58,9 +62,20 @@ export default function LeadList() {
         }
     };
 
-    const handleCall = (phone: string) => {
-        // For now, just open the phone dialer or copy to clipboard
-        window.open(`tel:${phone}`, '_self');
+    const handleCall = async (lead: Lead) => {
+        try {
+            const result = await callAPI.initiate({
+                phone_number: lead.phone,
+                lead_id: lead.id
+            });
+
+            if (result.status === 'success' && result.data) {
+                // Navigate to call interface
+                router.push(`/call/${(result.data as Call).id}`);
+            }
+        } catch (error) {
+            console.error('Call initiation error:', error);
+        }
     };
 
     const handleCreateSuccess = () => {
@@ -142,7 +157,7 @@ export default function LeadList() {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => handleCall(lead.phone)}
+                                                    onClick={() => handleCall(lead)}
                                                 >
                                                     <Phone className="h-4 w-4 mr-1" />
                                                     Call Now
