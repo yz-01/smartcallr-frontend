@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { PhoneOff, Upload, Clock, Download } from 'lucide-react';
+import { PhoneOff, Clock, Download, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { callAPI } from '@/services/call';
 import { Call } from '@/interfaces/call';
@@ -18,13 +17,40 @@ interface CallInterfaceProps {
 export default function CallInterface({ initialCall }: CallInterfaceProps) {
     const router = useRouter();
     const [call, setCall] = useState<Call>(initialCall);
-    const [isActive, setIsActive] = useState(initialCall.status !== 'completed');
+    const [isActive, setIsActive] = useState(initialCall.status !== 'completed' && initialCall.status !== 'failed');
     const [duration, setDuration] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isEnding, setIsEnding] = useState(false);
     const [notes, setNotes] = useState('');
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isSavingNotes, setIsSavingNotes] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Periodically check call status from backend
+    useEffect(() => {
+        if (isActive) {
+            const statusInterval = setInterval(async () => {
+                try {
+                    const result = await callAPI.getStatus(call.id);
+                    if (result.status === 'success') {
+                        const updatedCall = result.data as Call;
+                        setCall(updatedCall);
+
+                        // If call has ended on backend, update local state
+                        if (updatedCall.status === 'completed' || updatedCall.status === 'failed') {
+                            setIsActive(false);
+                            if (intervalRef.current) {
+                                clearInterval(intervalRef.current);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking call status:', error);
+                }
+            }, 5000); // Check every 5 seconds
+
+            return () => clearInterval(statusInterval);
+        }
+    }, [isActive, call.id]);
 
     // Start timer when component mounts
     useEffect(() => {
@@ -41,11 +67,42 @@ export default function CallInterface({ initialCall }: CallInterfaceProps) {
         };
     }, [isActive]);
 
+    // Auto-download recording when call ends
+    useEffect(() => {
+        if (!isActive && call.status === 'completed' && !call.recording_file_path) {
+            // Download recording immediately when call ends
+            console.log('Auto-downloading recording for completed call:', call.id);
+            handleDownloadRecording();
+        }
+    }, [isActive, call.status, call.recording_file_path]);
+
     // Format duration to MM:SS
     const formatDuration = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleSaveNotes = async () => {
+        if (!notes.trim()) {
+            toast.error('Please enter some notes before saving');
+            return;
+        }
+
+        setIsSavingNotes(true);
+        try {
+            const result = await callAPI.updateNotes(call.id, { notes });
+
+            if (result.status === 'success') {
+                setCall(result.data as Call);
+                toast.success('Notes saved successfully');
+            }
+        } catch (error) {
+            console.error('Error saving notes:', error);
+            toast.error('Failed to save notes');
+        } finally {
+            setIsSavingNotes(false);
+        }
     };
 
     const handleEndCall = async () => {
@@ -146,7 +203,7 @@ export default function CallInterface({ initialCall }: CallInterfaceProps) {
 
                     {/* Call Controls */}
                     <div className="flex justify-center space-x-4">
-                        {isActive && call.status !== 'completed' ? (
+                        {isActive && call.status !== 'completed' && call.status !== 'failed' ? (
                             <Button
                                 size="lg"
                                 variant="destructive"
@@ -158,26 +215,44 @@ export default function CallInterface({ initialCall }: CallInterfaceProps) {
                             </Button>
                         ) : (
                             <div className="text-center text-gray-500">
-                                Call ended after {formatDuration(duration)}
+                                <p>
+                                    {call.status === 'failed'
+                                        ? 'Call failed or was disconnected'
+                                        : `Call ended after ${formatDuration(duration)}`
+                                    }
+                                </p>
+                                {call.status === 'failed' && (
+                                    <p className="text-sm text-red-500 mt-1">
+                                        The call may have been ended by the other party or due to connection issues
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
 
-                    {/* Notes Section */}
-                    {!isActive && (
-                        <div className="space-y-2">
-                            <label htmlFor="notes" className="text-sm font-medium">
-                                Call Notes
-                            </label>
-                            <Textarea
-                                id="notes"
-                                placeholder="Add notes about this call..."
-                                value={notes}
-                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
-                                rows={3}
-                            />
-                        </div>
-                    )}
+                    {/* Notes Section - Always visible */}
+                    <div className="space-y-3">
+                        <label htmlFor="notes" className="text-sm font-medium">
+                            Call Notes
+                        </label>
+                        <Textarea
+                            id="notes"
+                            placeholder="Add notes about this call..."
+                            value={notes}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
+                            rows={3}
+                        />
+                        <Button
+                            onClick={handleSaveNotes}
+                            disabled={isSavingNotes || !notes.trim()}
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                        >
+                            <Save className="mr-2 h-4 w-4" />
+                            {isSavingNotes ? 'Saving...' : 'Save Notes'}
+                        </Button>
+                    </div>
 
                     {/* Recording Download Section */}
                     {!isActive && (
@@ -196,16 +271,18 @@ export default function CallInterface({ initialCall }: CallInterfaceProps) {
                             ) : (
                                 <div className="space-y-2">
                                     <p className="text-sm text-gray-600">
-                                        Download the actual call conversation recording from Twilio.
+                                        {isDownloading ? 'Downloading recording from Twilio...' : 'Download the actual call conversation recording from Twilio.'}
                                     </p>
-                                    <Button
-                                        onClick={handleDownloadRecording}
-                                        disabled={isDownloading}
-                                        className="w-full"
-                                    >
-                                        <Download className="mr-2 h-4 w-4" />
-                                        {isDownloading ? 'Downloading...' : 'Download Call Recording'}
-                                    </Button>
+                                    {!isDownloading && (
+                                        <Button
+                                            onClick={handleDownloadRecording}
+                                            disabled={isDownloading}
+                                            className="w-full"
+                                        >
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Download Call Recording
+                                        </Button>
+                                    )}
                                     {call.status !== 'completed' && (
                                         <p className="text-xs text-yellow-600">
                                             Note: Recording may take a few minutes to become available after call ends

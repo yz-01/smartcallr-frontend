@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Phone, Clock, FileAudio, Eye } from 'lucide-react';
+import { Phone, Eye } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -95,11 +95,8 @@ export default function CallHistory() {
                                     <TableHead>Lead</TableHead>
                                     <TableHead>Call Status</TableHead>
                                     <TableHead>Start Time</TableHead>
-                                    <TableHead>Duration</TableHead>
-                                    <TableHead>Recording</TableHead>
                                     <TableHead>Transcription</TableHead>
                                     <TableHead>Summary</TableHead>
-                                    <TableHead>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -132,24 +129,6 @@ export default function CallHistory() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center space-x-1">
-                                                <Clock className="h-4 w-4 text-gray-400" />
-                                                <span className="font-mono text-sm">
-                                                    {call.duration_formatted}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {call.recording_file_path ? (
-                                                <div className="flex items-center space-x-1 text-green-600">
-                                                    <FileAudio className="h-4 w-4" />
-                                                    <span className="text-sm">Available</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-400 text-sm">None</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
                                             <Badge variant={getStatusBadgeVariant(call.transcribe_status)}>
                                                 {getStatusText(call.transcribe_status)}
                                             </Badge>
@@ -158,12 +137,6 @@ export default function CallHistory() {
                                             <Badge variant={getStatusBadgeVariant(call.summary_status)}>
                                                 {getStatusText(call.summary_status)}
                                             </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center space-x-1 text-blue-600">
-                                                <Eye className="h-4 w-4" />
-                                                <span className="text-sm">View</span>
-                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

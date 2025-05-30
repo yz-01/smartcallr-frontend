@@ -12,7 +12,10 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut } from 'lucide-react';
+import { 
+    // User, 
+    LogOut 
+} from 'lucide-react';
 import { authAPI } from '@/services/auth';
 import toast from 'react-hot-toast';
 
@@ -69,10 +72,10 @@ export default function Header({ user }: HeaderProps) {
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            {/* <DropdownMenuItem>
                                 <User className="mr-2 h-4 w-4" />
                                 <span>Profile</span>
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={handleLogout} disabled={isLoading}>
                                 <LogOut className="mr-2 h-4 w-4" />

@@ -62,6 +62,23 @@ export const callAPI = {
     }
   },
 
+  updateNotes: async (callId: number, data: { notes: string }): Promise<CallApiResponse> => {
+    try {
+      const response = await api.patch(`${CALLS_ENDPOINT}${callId}/notes/`, data);
+      const result = response.data;
+      
+      if (result.status === 'success') {
+        mutate(`${CALLS_ENDPOINT}history/`);
+      }
+      
+      return result;
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.message || 'Failed to update notes');
+      throw error;
+    }
+  },
+
   uploadRecording: async (callId: number, recordingFile: File): Promise<CallApiResponse> => {
     try {
       const formData = new FormData();

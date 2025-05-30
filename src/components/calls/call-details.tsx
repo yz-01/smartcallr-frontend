@@ -1,17 +1,20 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Play, Pause, Volume2, FileText, Sparkles, Clock, Phone, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { callAPI } from '@/services/call';
 import { Call } from '@/interfaces/call';
 import { toast } from 'react-hot-toast';
 import useSWR from 'swr';
 import React from 'react';
+import Layout from '@/components/common/layout';
+import ReactMarkdown from 'react-markdown';
 
 interface CallDetailsProps {
     callId: number;
@@ -26,6 +29,8 @@ export default function CallDetails({ callId }: CallDetailsProps) {
     const [duration, setDuration] = useState(0);
     const [audioUrl, setAudioUrl] = useState<string>('');
     const [audioLoading, setAudioLoading] = useState(false);
+    const [transcribeProgress, setTranscribeProgress] = useState(0);
+    const [summaryProgress, setSummaryProgress] = useState(0);
 
     // Fetch call details
     const { data: response, error, isLoading, mutate } = useSWR(
@@ -34,6 +39,44 @@ export default function CallDetails({ callId }: CallDetailsProps) {
     );
 
     const call = response?.data as Call;
+
+    // Progress simulation for transcription
+    React.useEffect(() => {
+        if (call?.transcribe_status === 'processing') {
+            setTranscribeProgress(0);
+            const interval = setInterval(() => {
+                setTranscribeProgress((prev) => {
+                    if (prev >= 90) return prev;
+                    return prev + Math.random() * 10;
+                });
+            }, 1000);
+
+            return () => clearInterval(interval);
+        } else if (call?.transcribe_status === 'completed') {
+            setTranscribeProgress(100);
+        } else {
+            setTranscribeProgress(0);
+        }
+    }, [call?.transcribe_status]);
+
+    // Progress simulation for summary
+    React.useEffect(() => {
+        if (call?.summary_status === 'processing') {
+            setSummaryProgress(0);
+            const interval = setInterval(() => {
+                setSummaryProgress((prev) => {
+                    if (prev >= 90) return prev;
+                    return prev + Math.random() * 10;
+                });
+            }, 1000);
+
+            return () => clearInterval(interval);
+        } else if (call?.summary_status === 'completed') {
+            setSummaryProgress(100);
+        } else {
+            setSummaryProgress(0);
+        }
+    }, [call?.summary_status]);
 
     // Load audio blob when call data is available
     React.useEffect(() => {
@@ -141,23 +184,27 @@ export default function CallDetails({ callId }: CallDetailsProps) {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-gray-500">Loading call details...</div>
-            </div>
+            <Layout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-500">Loading call details...</div>
+                </div>
+            </Layout>
         );
     }
 
     if (error || !call) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-red-500">Error loading call details</div>
-            </div>
+            <Layout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-red-500">Error loading call details</div>
+                </div>
+            </Layout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4">
-            <div className="max-w-4xl mx-auto space-y-6">
+        <Layout>
+            <div className="space-y-6">
                 {/* Header */}
                 <div className="flex items-center space-x-4">
                     <Button
@@ -170,9 +217,13 @@ export default function CallDetails({ callId }: CallDetailsProps) {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold">Call Details</h1>
-                        <p className="text-gray-500">
-                            {format(new Date(call.start_time), 'MMM dd, yyyy at hh:mm a')}
-                        </p>
+                        <div className="flex items-center space-x-4 text-gray-500">
+                            <span>{format(new Date(call.start_time), 'EEEE, MMMM do, yyyy')}</span>
+                            <span>•</span>
+                            <span>{format(new Date(call.start_time), 'h:mm a')}</span>
+                            <span>•</span>
+                            <span>{formatDistanceToNow(new Date(call.start_time), { addSuffix: true })}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -191,7 +242,7 @@ export default function CallDetails({ callId }: CallDetailsProps) {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-500">Lead Name</p>
-                            <p className="text-lg">{call.lead_name || 'N/A'}</p>
+                            <p className="text-lg">{call.lead_name || '-'}</p>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-500">Duration</p>
@@ -200,6 +251,10 @@ export default function CallDetails({ callId }: CallDetailsProps) {
                         <div>
                             <p className="text-sm font-medium text-gray-500">Status</p>
                             <Badge variant="default">{call.status}</Badge>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-500">Notes</p>
+                            <p className="text-lg">{call.notes || '-'}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -238,7 +293,7 @@ export default function CallDetails({ callId }: CallDetailsProps) {
                                         preload="metadata"
                                         crossOrigin="anonymous"
                                     />
-                                    
+
                                     <div className="flex items-center space-x-4">
                                         <Button
                                             variant="outline"
@@ -309,9 +364,18 @@ export default function CallDetails({ callId }: CallDetailsProps) {
                                 <p className="whitespace-pre-wrap">{call.transcribe_content}</p>
                             </div>
                         ) : call.transcribe_status === 'processing' ? (
-                            <div className="text-center py-8 text-gray-500">
-                                <Clock className="h-8 w-8 animate-spin mx-auto mb-2" />
-                                <p>Transcribing audio...</p>
+                            <div className="space-y-4">
+                                <div className="text-center py-4 text-gray-500">
+                                    <Clock className="h-8 w-8 animate-spin mx-auto mb-2" />
+                                    <p>Transcribing audio...</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm text-gray-600">
+                                        <span>Processing audio transcription</span>
+                                        <span>{Math.round(transcribeProgress)}%</span>
+                                    </div>
+                                    <Progress value={transcribeProgress} className="w-full" />
+                                </div>
                             </div>
                         ) : call.transcribe_status === 'failed' ? (
                             <div className="text-center py-8 text-red-500">
@@ -352,13 +416,34 @@ export default function CallDetails({ callId }: CallDetailsProps) {
                     </CardHeader>
                     <CardContent>
                         {call.summary_status === 'completed' && call.summary_content ? (
-                            <div className="prose max-w-none">
-                                <p className="whitespace-pre-wrap">{call.summary_content}</p>
+                            <div className="prose max-w-none text-sm leading-relaxed">
+                                <ReactMarkdown
+                                    components={{
+                                        h1: ({ children }) => <h1 className="text-lg font-semibold mb-2">{children}</h1>,
+                                        h2: ({ children }) => <h2 className="text-base font-semibold mb-2">{children}</h2>,
+                                        h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
+                                        strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                                        ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-4">{children}</ul>,
+                                        li: ({ children }) => <li className="text-sm">{children}</li>,
+                                        p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>
+                                    }}
+                                >
+                                    {call.summary_content}
+                                </ReactMarkdown>
                             </div>
                         ) : call.summary_status === 'processing' ? (
-                            <div className="text-center py-8 text-gray-500">
-                                <Clock className="h-8 w-8 animate-spin mx-auto mb-2" />
-                                <p>Generating summary...</p>
+                            <div className="space-y-4">
+                                <div className="text-center py-4 text-gray-500">
+                                    <Clock className="h-8 w-8 animate-spin mx-auto mb-2" />
+                                    <p>Generating AI summary...</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm text-gray-600">
+                                        <span>Analyzing transcription content</span>
+                                        <span>{Math.round(summaryProgress)}%</span>
+                                    </div>
+                                    <Progress value={summaryProgress} className="w-full" />
+                                </div>
                             </div>
                         ) : call.summary_status === 'failed' ? (
                             <div className="text-center py-8 text-red-500">
@@ -375,19 +460,7 @@ export default function CallDetails({ callId }: CallDetailsProps) {
                         )}
                     </CardContent>
                 </Card>
-
-                {/* Notes */}
-                {call.notes && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Call Notes</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="whitespace-pre-wrap">{call.notes}</p>
-                        </CardContent>
-                    </Card>
-                )}
             </div>
-        </div>
+        </Layout>
     );
 } 

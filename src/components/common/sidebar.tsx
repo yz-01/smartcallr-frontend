@@ -8,8 +8,8 @@ import {
     LayoutDashboard,
     Users,
     Phone,
-    BarChart3,
-    Settings
+    // BarChart3,
+    // Settings
 } from 'lucide-react';
 
 const navigation = [
@@ -28,16 +28,16 @@ const navigation = [
         href: '/calls',
         icon: Phone,
     },
-    {
-        name: 'Analytics',
-        href: '/analytics',
-        icon: BarChart3,
-    },
-    {
-        name: 'Settings',
-        href: '/settings',
-        icon: Settings,
-    },
+    // {
+    //     name: 'Analytics',
+    //     href: '/analytics',
+    //     icon: BarChart3,
+    // },
+    // {
+    //     name: 'Settings',
+    //     href: '/settings',
+    //     icon: Settings,
+    // },
 ];
 
 export default function Sidebar() {
