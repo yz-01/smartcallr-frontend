@@ -19,7 +19,7 @@ const fetcher = (url: string) => api.get(url).then(res => res.data);
 export const authAPI = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     try {
-      const response = await api.post('/users/users/login/', data);
+      const response = await api.post('/users/login/', data);
       const result = response.data as AuthResponse;
       
       if (result.status === 'success' && result.data) {
@@ -31,7 +31,7 @@ export const authAPI = {
         toast.success(result.data.message || 'Login successful!');
         
         // Mutate user data
-        mutate('/users/users/profile/', result.data.user);
+        mutate('/users/profile/', result.data.user);
       } else {
         toast.error(result.message || 'Login failed');
       }
@@ -47,7 +47,7 @@ export const authAPI = {
 
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
     try {
-      const response = await api.post('/users/users/register/', data);
+      const response = await api.post('/users/register/', data);
       const result = response.data as AuthResponse;
       
       if (result.status === 'success' && result.data) {
@@ -59,7 +59,7 @@ export const authAPI = {
         toast.success(result.data.message || 'Registration successful!');
         
         // Mutate user data
-        mutate('/users/users/profile/', result.data.user);
+        mutate('/users/profile/', result.data.user);
       } else {
         toast.error(result.message || 'Registration failed');
       }
@@ -73,10 +73,21 @@ export const authAPI = {
     }
   },
 
+  getProfile: async (): Promise<ApiResponse<User>> => {
+    try {
+      const response = await api.get('/users/profile/');
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.message || 'Failed to fetch profile');
+      throw error;
+    }
+  },
+
   logout: () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-    mutate('/users/users/profile/', null);
+    mutate('/users/profile/', null);
     toast.success('Logged out successfully');
   }
 };
@@ -84,7 +95,7 @@ export const authAPI = {
 // Custom hooks using SWR
 export const useUser = () => {
   const { data, error, isLoading, mutate: mutateUser } = useSWR<ApiResponse<{ user: User }>>(
-    '/users/users/profile/',
+    '/users/profile/',
     fetcher,
     {
       shouldRetryOnError: false,
